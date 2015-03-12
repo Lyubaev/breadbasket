@@ -1,0 +1,20 @@
+{
+    "name": "elephant/breadbasket",
+    "description": "This is breadbasket!",
+    "authors": [
+        {
+            "name": "Lyubaev Kirill",
+            "email": "lubaev.ka@gmail.com"
+        }
+    ],
+    "require": {
+      "psr/log": "1.0.0",
+      "symfony/console": "^2.6"
+    },
+    "autoload": {
+      "psr-4": {
+        "Elephant\\Breadbasket\\": "src/Elephant/Breadbasket"
+      }
+    },
+    "bin": ["src/bin/breadbasket"]
+}
