@@ -3,10 +3,25 @@
 ```sh
 $ apt-get update > /dev/null
 $ apt-get install -y \
-mcrypt \
-libmcrypt-dev \
+git \
+build-essential \
+autoconf2.13 \
+bison \
 libedit-dev \
 libxslt1-dev
+```
+
+```sh
+mkdir -p /etc/php5/conf.d
+mkdir ~/php-src
+```
+
+Fetch php-src (5.3.29)
+```sh
+$ cd ~/php-src
+$ git remote add origin https://github.com/php/php-src.git
+$ git fetch origin PHP-5.3.29:refs/remotes/origin/master
+$ git checkout -b master origin/master
 ```
 
 ```sh
@@ -30,7 +45,7 @@ $ ./configure \
 ```
 
 ```sh
-$ make -j8
+$ make 
 $ make install
 ```
 
@@ -44,13 +59,11 @@ $ ln -s /etc/php5/bin/php-config /usr/bin/php-config
 ```
 
 ```sh
-$ mkdir -p /etc/php5/conf.d
-```
-
-```sh
 $ pecl install pthreads
+$ echo "extension=pthreads.so" > /etc/php5/conf.d/pthreads.ini
 ```
 
 ```sh
-$ echo "extension=pthreads.so" > /etc/php5/conf.d/pthreads.ini
+$ pecl install event-1.10.2
+$ echo "extension=event.so" > /etc/php5/conf.d/event.ini
 ```

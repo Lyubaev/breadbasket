@@ -17,6 +17,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 class WorkerCommand extends Command
 {
     private $storage;
+    private $num_children;
+    private $children = array();
 
     public function __construct($name = null)
     {
@@ -30,6 +32,13 @@ class WorkerCommand extends Command
         $this
             ->setName('worker')
             ->setDescription('Start worker instance')
+            ->addOption(
+                'concurrency',
+                'c',
+                InputOption::VALUE_REQUIRED,
+                'Number of child processes processing the queue.
+The default is the number of CPUs available on your system.'
+            )
             ->addOption(
                 'detach',
                 'D',
@@ -69,13 +78,30 @@ If no logfile is specified, stderr is used'
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        if (true === $input->hasParameterOption(array('--detach', '-D'))) {
-            $pid_file = $this->getPidfile($input, $output);
-            $log_file = $this->getLogfile($input, $output);
-            $this->detach($pid_file, $log_file);
+        // Get available processors.
+        if (true === $input->hasParameterOption(array('--concurrency', '-c'))) {
+            $this->num_children = intval($input->getParameterOption(array('--concurrency', '-c')));
+            if (1 > $this->num_children) {
+                $this->num_children = $this->availableProcessors();
+            }
+        } else {
+            $this->num_children = $this->availableProcessors();
         }
 
-        $this->setupEnv($input, $output);
+        // Detaching?
+        if (true === $input->hasParameterOption(array('--detach', '-D'))) {
+            # Создаем новый процесс (лидер).
+            # Отсоединяемся от консоли.
+            # От основоного, создаем дочерние == concurrency.
+            $pid_file = $this->getPidfile($input, $output);
+            $log_file = $this->getLogfile($input, $output);
+            $this->detaching($pid_file, $log_file);
+        } else {
+            # Остаемся в консоли. Основной процесс (лидер).
+            # От основоного, создаем дочерние == concurrency.
+        }
+
+//        $this->setupEnv($input, $output);
 
 //        if (true === $input->hasParameterOption(array('--app', '-A'))) {
 //            $app = $input->getParameterOption(array('--app', '-A'));
@@ -89,7 +115,32 @@ If no logfile is specified, stderr is used'
 //            Registry::fetchTasks($this->storage);
 //        }
 
-        sleep(10);
+        $this->loop();
+    }
+
+    private function loop()
+    {
+        pcntl_signal(SIGCHLD, array($this, 'sigChild'));
+
+        while (1) {
+            if (sizeof($this->children) < $this->num_children) {
+                if ($pid = pcntl_fork()) {
+                    $this->children[] = $pid;
+                } else {
+                    while(1);
+                    exit(0);
+                }
+            }
+        }
+        exit(0);
+    }
+
+    private function sigChild($signal)
+    {
+        pcntl_signal(SIGCHLD, array($this, __FUNCTION__));
+        while (($pid = pcntl_wait($status, WNOHANG)) > 0) {
+            $this->children = array_diff($this->children, array($pid));
+        }
     }
 
     private function setupEnv(InputInterface $input, OutputInterface $output)
@@ -128,12 +179,15 @@ environment variable (but please think about this before you do).
         }
     }
 
-    private function detach($pid_file)
+    private function detaching($pid_file)
     {
         if (pcntl_fork()) {
             exit(1);
         }
         posix_setsid();
+        if (pcntl_fork()) {
+            exit(1);
+        }
 
         $fd = fopen($pid_file, 'w');
         flock($fd, LOCK_EX);
@@ -141,14 +195,6 @@ environment variable (but please think about this before you do).
         fflush($fd);
         flock($fd, LOCK_UN);
         fclose($fd);
-
-        // TODO Обработка!
-        pcntl_signal(SIGTERM, array($this, 'terminate'));
-    }
-
-    private function terminate($signal)
-    {
-        file_put_contents('fo', $signal);
     }
 
     private function getPidfile(InputInterface $input, OutputInterface $output)
@@ -190,5 +236,11 @@ environment variable (but please think about this before you do).
         $log_file = 'breadbasket.log';
 
         return $log_file;
+    }
+
+    private function availableProcessors()
+    {
+        $count = (int) `cat /proc/cpuinfo | grep processor | wc -l`;
+        return $count ?: 1;
     }
 }
