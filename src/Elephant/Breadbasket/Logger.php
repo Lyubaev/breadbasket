@@ -17,6 +17,16 @@ class Logger implements LoggerInterface
     private $url;
     private $stream;
     private $level;
+    private $levels = array(
+        'EMERGENCY',
+        'ALERT',
+        'CRITICAL',
+        'ERROR',
+        'WARNING',
+        'NOTICE',
+        'INFO',
+        'DEBUG',
+    );
 
     public function __construct($stream, $level = self::DEBUG)
     {
@@ -42,11 +52,14 @@ class Logger implements LoggerInterface
     public function setLevel($level)
     {
         if (is_string($level) && defined(__CLASS__ . '::' . strtoupper($level))) {
-            $this->level = $level;
-        } else {
-            $ref = new \ReflectionClass(__CLASS__);
-            throw new \RuntimeException(sprintf('Unknown level \'%s\'. Please use one of %s.', $level, join('|', $ref->getConstants())));
+            $level = $level;
         }
+
+
+//        else {
+//            $ref = new \ReflectionClass(__CLASS__);
+//            throw new \RuntimeException(sprintf('Unknown level \'%s\'. Please use one of %s.', $level, join('|', $ref->getConstants())));
+//        }
 
     }
 
