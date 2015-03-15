@@ -11,6 +11,9 @@
       "psr/log": "1.0.0",
       "symfony/console": "^2.6"
     },
+    "require-dev": {
+      "monolog/monolog": "^1.13"
+    },
     "autoload": {
       "psr-4": {
         "Elephant\\Breadbasket\\": "src/Elephant/Breadbasket"
