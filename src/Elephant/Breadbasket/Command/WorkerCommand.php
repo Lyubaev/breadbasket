@@ -6,6 +6,7 @@
 
 namespace Elephant\Breadbasket\Command;
 
+use Elephant\Breadbasket\Application;
 use Elephant\Breadbasket\Registry;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -103,10 +104,13 @@ If no logfile is specified, stderr is used.'
 
         # Все ошибки, что происходили до открытия журнала, выводилось в stderr.
         # Большая часть из них - RuntimeException исключения.
-        $this->openLog($input);
+        $this->openLog($input, $output);
 
         // TODO
         $this->log()->debug('Hello!');
+        $this->log()->info('Hello!');
+        $this->log()->notice('Hello!');
+        $this->log()->warning('Hello!');
 
         // Get available processors.
         if (true === $input->hasParameterOption(array('--concurrency', '-c'))) {
@@ -272,7 +276,7 @@ environment variable (but please think about this before you do).
                 throw new \RuntimeException(sprintf('Directory (%s) not found', $dir));
             }
         } else {
-            $pid_file = 'breadbasketd.pid';
+            $pid_file = strtolower(Application::NAME) . 'd.pid';
         }
 
         if (file_exists($pid_file)) {

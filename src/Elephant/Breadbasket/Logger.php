@@ -2,65 +2,53 @@
 namespace Elephant\Breadbasket;
 
 use Psr\Log\LoggerInterface;
+use Psr\Log\InvalidArgumentException;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Output\StreamOutput;
 
 class Logger implements LoggerInterface
 {
-    const DEBUG     = 7;
-    const INFO      = 6;
-    const NOTICE    = 5;
-    const WARNING   = 4;
-    const ERROR     = 3;
-    const CRITICAL  = 2;
-    const ALERT     = 1;
-    const EMERGENCY = 0;
+    const EMERGENCY = 'emergency';
+    const ALERT = 'alert';
+    const CRITICAL = 'critical';
+    const ERROR = 'error';
+    const WARNING = 'warning';
+    const NOTICE = 'notice';
+    const INFO = 'info';
+    const DEBUG = 'debug';
 
-    private $url;
+    private $name;
     private $stream;
     private $level;
     private $levels = array(
-        'EMERGENCY',
-        'ALERT',
-        'CRITICAL',
-        'ERROR',
-        'WARNING',
-        'NOTICE',
-        'INFO',
-        'DEBUG',
+        'EMERGENCY' => 0,
+        'ALERT'     => 1,
+        'CRITICAL'  => 2,
+        'ERROR'     => 3,
+        'WARNING'   => 4,
+        'NOTICE'    => 5,
+        'INFO'      => 6,
+        'DEBUG'     => 7,
     );
 
-    public function __construct($stream, $level = self::DEBUG)
+    public function __construct($name, OutputInterface $stream, $level = self::DEBUG)
     {
-        if (is_resource($stream)) {
-            $this->stream = $stream;
-        } elseif (is_string($stream)) {
-            $this->url = $stream;
-        } else {
-            throw new \InvalidArgumentException('A stream must either be a resource or a string.');
-        }
-
+        $this->name = $name;
+        $this->stream = $stream;
         $this->setLevel($level);
     }
 
     public function __destruct()
     {
-        if (is_resource($this->stream)) {
-            fclose($this->stream);
+        if ($this->stream instanceof StreamOutput) {
+            fclose($this->stream->getStream());
         }
         $this->stream = null;
     }
 
     public function setLevel($level)
     {
-        if (is_string($level) && defined(__CLASS__ . '::' . strtoupper($level))) {
-            $level = $level;
-        }
-
-
-//        else {
-//            $ref = new \ReflectionClass(__CLASS__);
-//            throw new \RuntimeException(sprintf('Unknown level \'%s\'. Please use one of %s.', $level, join('|', $ref->getConstants())));
-//        }
-
+        $this->level = $level;
     }
 
     /**
@@ -189,8 +177,37 @@ class Logger implements LoggerInterface
      */
     public function log($level, $message, array $context = array())
     {
-        if (is_string($level)) {
-
+        if (!isset($this->levels[strtoupper($level)])) {
+            throw new InvalidArgumentException(sprintf('The log level "%s" does not exist.', $level));
         }
+
+        if ($this->levels[strtoupper($level)] <= $this->levels[strtoupper($this->level)]) {
+            return false;
+        }
+        $this->stream->writeln(sprintf('<%1$s>[%2$s] %3$s</%1$s>', 'error', $level, $this->interpolate($message, $context)));
+    }
+
+    /**
+     * Interpolates context values into the message placeholders
+     *
+     * @author PHP Framework Interoperability Group
+     *
+     * @param string $message
+     * @param array  $context
+     *
+     * @return string
+     */
+    private function interpolate($message, array $context)
+    {
+        // build a replacement array with braces around the context keys
+        $replace = array();
+        foreach ($context as $key => $val) {
+            if (!is_array($val) && (!is_object($val) || method_exists($val, '__toString'))) {
+                $replace[sprintf('{%s}', $key)] = $val;
+            }
+        }
+
+        // interpolate replacement values into the message and return
+        return strtr($message, $replace);
     }
 }
