@@ -16,22 +16,23 @@ abstract class AbstractCommand extends Command
 
     protected function openLog(InputInterface $input, OutputInterface $output)
     {
-        // Get logger stream.
+        if (true === $input->hasParameterOption(array('--detach', '-D'))) {
+            fclose(STDIN);
+            fclose(STDOUT);
+            fclose(STDERR);
+        }
+
         if (true === $input->hasParameterOption(array('--log-file', '-f'))) {
             $stream = $input->getParameterOption(array('--log-file', '-f'));
             $stream = new StreamOutput(fopen($stream, 'a', false));
         } elseif (true === $input->hasParameterOption(array('--detach', '-D'))) {
             $stream = strtolower(Application::NAME) . '.log';
             $stream = new StreamOutput(fopen($stream, 'a', false));
-
-            fclose(STDIN);
-            fclose(STDOUT);
-            fclose(STDERR);
         } else {
             if ($output instanceof ConsoleOutput) {
                 $stream = $output->getErrorOutput();
             } else {
-                $stream = new StreamOutput(fopen('php://stderr', 'w', false));
+                $stream = new StreamOutput(STDERR);
             }
         }
 
@@ -42,7 +43,7 @@ abstract class AbstractCommand extends Command
             $level = Logger::WARNING;
         }
 
-        $this->logger = new Logger(Application::NAME, $stream, $level);
+        $this->logger = new Logger($stream, $level);
     }
 
     protected function closeLog()

@@ -3,6 +3,7 @@ namespace Elephant\Breadbasket;
 
 use Psr\Log\LoggerInterface;
 use Psr\Log\InvalidArgumentException;
+use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Output\StreamOutput;
 
@@ -17,7 +18,6 @@ class Logger implements LoggerInterface
     const INFO = 'info';
     const DEBUG = 'debug';
 
-    private $name;
     private $stream;
     private $level;
     private $levels = array(
@@ -31,9 +31,17 @@ class Logger implements LoggerInterface
         'DEBUG'     => 7,
     );
 
-    public function __construct($name, OutputInterface $stream, $level = self::DEBUG)
+    public function __construct(OutputInterface $stream, $level = self::DEBUG)
     {
-        $this->name = $name;
+        $stream->getFormatter()->setStyle('debug',     new OutputFormatterStyle('white', null));
+        $stream->getFormatter()->setStyle('info',      new OutputFormatterStyle('green', null));
+        $stream->getFormatter()->setStyle('notice',    new OutputFormatterStyle('cyan', null));
+        $stream->getFormatter()->setStyle('warning',   new OutputFormatterStyle('yellow', null));
+        $stream->getFormatter()->setStyle('error',     new OutputFormatterStyle('red', null));
+        $stream->getFormatter()->setStyle('critical',  new OutputFormatterStyle('red', null));
+        $stream->getFormatter()->setStyle('alert',     new OutputFormatterStyle('red', null));
+        $stream->getFormatter()->setStyle('emergency', new OutputFormatterStyle('red', null));
+
         $this->stream = $stream;
         $this->setLevel($level);
     }
@@ -181,10 +189,14 @@ class Logger implements LoggerInterface
             throw new InvalidArgumentException(sprintf('The log level "%s" does not exist.', $level));
         }
 
-        if ($this->levels[strtoupper($level)] <= $this->levels[strtoupper($this->level)]) {
+        if ($this->levels[strtoupper($level)] > $this->levels[strtoupper($this->level)]) {
             return false;
         }
-        $this->stream->writeln(sprintf('<%1$s>[%2$s] %3$s</%1$s>', 'error', $level, $this->interpolate($message, $context)));
+
+        $timezone = new \DateTimeZone(@date_default_timezone_get());
+        $date = \DateTime::createFromFormat('U.u', microtime(true), $timezone)->setTimezone($timezone);
+
+        $this->stream->writeln(sprintf('<%1$s>[%2$s] %3$s</%1$s>', $level, $date->format('c'), $this->interpolate($message, $context)));
     }
 
     /**

@@ -107,10 +107,11 @@ If no logfile is specified, stderr is used.'
         $this->openLog($input, $output);
 
         // TODO
-        $this->log()->debug('Hello!');
-        $this->log()->info('Hello!');
-        $this->log()->notice('Hello!');
-        $this->log()->warning('Hello!');
+        $this->log()->debug('{type} Message!', array('type' => 'Debug'));
+        $this->log()->info('{type} Message!', array('type' => 'Info'));
+        $this->log()->notice('{type} Message!', array('type' => 'Notice'));
+        $this->log()->warning('{type} Message!', array('type' => 'Warning'));
+        $this->log()->error('{type} Message!', array('type' => 'Error'));
 
         // Get available processors.
         if (true === $input->hasParameterOption(array('--concurrency', '-c'))) {
@@ -244,12 +245,12 @@ environment variable (but please think about this before you do).
 
         if (pcntl_fork()) {
             $this->closePid($r_pid);
-            exit(1);
+            exit(0);
         }
         posix_setsid();
         if (pcntl_fork()) {
             $this->closePid($r_pid);
-            exit(1);
+            exit(0);
         }
 
         fwrite($r_pid, getmypid());
@@ -281,7 +282,7 @@ environment variable (but please think about this before you do).
 
         if (file_exists($pid_file)) {
             $r_pid = fopen($pid_file, 'r');
-            $pid = (int) fread($r_pid, 1024);
+            $pid = (int) fgets($r_pid);
             fclose($r_pid);
 
             if ($pid && posix_kill($pid, 0)) {
