@@ -107,19 +107,17 @@ If no logfile is specified, stderr is used.'
         $this->openLog($input, $output);
 
         // TODO
-        $this->log()->debug('{type} Message!', array('type' => 'Debug'));
-        $this->log()->info('{type} Message!', array('type' => 'Info'));
-        $this->log()->notice('{type} Message!', array('type' => 'Notice'));
-        $this->log()->warning('{type} Message!', array('type' => 'Warning'));
-        $this->log()->error('{type} Message!', array('type' => 'Error'));
+        $this->debug('{type} Message!', array('type' => 'Debug'));
+        $this->info('{type} Message!', array('type' => 'Info'));
+        $this->notice('{type} Message!', array('type' => 'Notice'));
+        $this->warning('{type} Message!', array('type' => 'Warning'));
+        $this->error('{type} Message!', array('type' => 'Error'));
 
         // Get available processors.
         if (true === $input->hasParameterOption(array('--concurrency', '-c'))) {
             $this->num_children = intval($input->getParameterOption(array('--concurrency', '-c')));
-            if (1 > $this->num_children) {
-                $this->num_children = $this->availableProcessors();
-            }
-        } else {
+        }
+        if (1 > $this->num_children) {
             $this->num_children = $this->availableProcessors();
         }
 
@@ -141,19 +139,26 @@ If no logfile is specified, stderr is used.'
     private function loop()
     {
         pcntl_signal(SIGCHLD, array($this, 'sigChild'));
+//        pcntl_signal(SIGTERM, array($this, 'sigTerm'));
 
         while (1) {
             pcntl_signal_dispatch();
-            if (sizeof($this->children) < $this->num_children) {
-                if ($pid = pcntl_fork()) {
-                    $this->children[] = $pid;
-                } else {
-                    while(1);
+            while (sizeof($this->children) < $this->num_children) {
+                $pid = pcntl_fork();
+                if (0 === $pid) { // child
+                    $this->childProcess();
                     exit(0);
+                } else { // parent
+                    $this->children []= $pid;
                 }
             }
         }
         exit(0);
+    }
+
+    private function childProcess()
+    {
+        while(1);
     }
 
     private function sigChild($signal)
@@ -162,6 +167,11 @@ If no logfile is specified, stderr is used.'
         while (($pid = pcntl_wait($status, WNOHANG)) > 0) {
             $this->children = array_diff($this->children, array($pid));
         }
+    }
+
+    private function sigTerm($signal)
+    {
+        echo 'Term: [' . $signal . ']';
     }
 
     private function setupEnv(InputInterface $input, OutputInterface $output)
@@ -195,11 +205,10 @@ If no logfile is specified, stderr is used.'
         }
 
         // This is root?
-        if (
-            (isset($pw['uid']) && 0 === $pw['uid']) || (!isset($pw['uid']) && 0 === posix_getuid())
-            && !isset($_ENV['BB_ROOT_FORCE'])
-        ) {
-            $output->writeln("<info>Running a worker with superuser privileges is a very bad idea!</info>\n");
+        $currentUID = isset($pw['uid']) ? $pw['uid'] : posix_getuid();
+        if (0 === $currentUID && !isset($_ENV['BB_ROOT_FORCE'])) {
+            $output->writeln('<info>Running a worker with superuser privileges is a very bad idea!</info>');
+            $output->writeln('');
             $output->writeln('<info>If you really want to continue then you have to set the BB_FORCE_ROOT
 environment variable (but please think about this before you do).
 </info>');

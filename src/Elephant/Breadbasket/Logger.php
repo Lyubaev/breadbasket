@@ -31,7 +31,7 @@ class Logger implements LoggerInterface
         'DEBUG'     => 7,
     );
 
-    public function __construct(OutputInterface $stream, $level = self::DEBUG)
+    public function __construct(OutputInterface $stream, $level = self::NOTICE)
     {
         $stream->getFormatter()->setStyle('debug',     new OutputFormatterStyle('white', null));
         $stream->getFormatter()->setStyle('info',      new OutputFormatterStyle('green', null));
