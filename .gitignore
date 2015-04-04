@@ -1,8 +1,6 @@
 /.idea/
 /vendor/
 .DS_Store
-/puphpet/
 /.vagrant/
 Vagrantfile
-
 composer.lock
