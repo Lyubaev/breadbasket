@@ -206,7 +206,7 @@ If no logfile is specified, stderr is used.'
 
         // This is root?
         $currentUID = isset($pw['uid']) ? $pw['uid'] : posix_getuid();
-        if (0 === $currentUID && !isset($_ENV['BB_ROOT_FORCE'])) {
+        if (0 === $currentUID && false === getenv('BB_ROOT_FORCE')) {
             $output->writeln('<info>Running a worker with superuser privileges is a very bad idea!</info>');
             $output->writeln('');
             $output->writeln('<info>If you really want to continue then you have to set the BB_FORCE_ROOT
@@ -246,6 +246,8 @@ environment variable (but please think about this before you do).
 
             clearstatcache(true);
         }
+
+        putenv('BB_NAME=');
     }
 
     private function detaching(InputInterface $input, OutputInterface $output)
